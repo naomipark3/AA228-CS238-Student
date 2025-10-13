@@ -1,6 +1,6 @@
 import sys
 
-import networkx
+import networkx as nx
 from bn_scoring import load_discrete_data
 from structure_learning import hill_climb
 
@@ -15,8 +15,20 @@ def compute(infile, outfile):
     # WRITE YOUR CODE HERE
     # FEEL FREE TO CHANGE ANYTHING ANYWHERE IN THE CODE
     # THIS INCLUDES CHANGING THE FUNCTION NAMES, MAKING THE CODE MODULAR, BASICALLY ANYTHING
-    pass
+    df = load_discrete_data(infile) #load dataset
+    columns = list(df.columns)
 
+    idx2names = {i: col for i, col in enumerate(columns)}
+    names2idx = {v: k for k, v in idx2names.items()}
+
+    dag, best_score = hill_climb(df, max_iters=100, max_parents=3) #run structure learning algo and learn structure of DAG
+
+    dag_indexed = nx.relabel_nodes(dag, names2idx, copy=True)
+    write_gph(dag_indexed, idx2names, outfile)
+
+    print(f"Structure algorithm finished running. Best score = {best_score:.2f}")
+    print(f"Graph written to {outfile}.")
+    print(f"Edges: {list(dag.edges())}")
 
 def main():
     if len(sys.argv) != 3:
