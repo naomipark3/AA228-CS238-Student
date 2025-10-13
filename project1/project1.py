@@ -18,8 +18,8 @@ def compute(infile, outfile):
     df = load_discrete_data(infile) #load dataset
     columns = list(df.columns)
 
-    idx2names = {i: col for i, col in enumerate(columns)}
-    names2idx = {v: k for k, v in idx2names.items()}
+    idx2names = {i: col for i, col in enumerate(columns)} #maps integer node IDs to variable names (i.e. 0 --> "age")
+    names2idx = {v: k for k, v in idx2names.items()} #maps variable names to integer node IDs ("age" --> 0)
 
     dag, best_score = hill_climb(df, max_iters=100, max_parents=3) #run structure learning algo and learn structure of DAG
 
@@ -33,8 +33,8 @@ def compute(infile, outfile):
     plt.savefig(outfile.replace('.gph', '.png'), dpi=200)
     plt.show()  #interactive window
 
-    dag_indexed = nx.relabel_nodes(dag, names2idx, copy=True)
-    write_gph(dag_indexed, idx2names, outfile)
+    dag_indexed = nx.relabel_nodes(dag, names2idx, copy=True) #convert names to node IDs
+    write_gph(dag_indexed, idx2names, outfile) #convert node IDs back to names
 
     print(f"Structure algorithm finished running. Best score = {best_score:.2f}")
     print(f"Graph written to {outfile}.")
