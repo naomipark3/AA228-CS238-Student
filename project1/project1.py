@@ -1,6 +1,8 @@
 import sys
 
 import networkx
+from bn_scoring import load_discrete_data
+from structure_learning import hill_climb
 
 
 def write_gph(dag, idx2names, filename):
