@@ -1,5 +1,5 @@
 import sys
-
+import matplotlib.pyplot as plt
 import networkx as nx
 from bn_scoring import load_discrete_data
 from structure_learning import hill_climb
@@ -22,6 +22,16 @@ def compute(infile, outfile):
     names2idx = {v: k for k, v in idx2names.items()}
 
     dag, best_score = hill_climb(df, max_iters=100, max_parents=3) #run structure learning algo and learn structure of DAG
+
+    plt.figure(figsize=(8, 6))
+    pos = nx.spring_layout(dag, seed=0)
+    nx.draw_networkx_nodes(dag, pos, node_size=900)
+    nx.draw_networkx_labels(dag, pos, font_size=9)
+    nx.draw_networkx_edges(dag, pos, arrows=True, arrowstyle='-|>', arrowsize=12)
+    plt.axis('off')
+    plt.tight_layout()
+    plt.savefig(outfile.replace('.gph', '.png'), dpi=200)
+    plt.show()  #interactive window
 
     dag_indexed = nx.relabel_nodes(dag, names2idx, copy=True)
     write_gph(dag_indexed, idx2names, outfile)
