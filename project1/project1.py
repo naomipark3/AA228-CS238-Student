@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import networkx as nx
 from bn_scoring import load_discrete_data
 from structure_learning import hill_climb
+import time
 
 
 def write_gph(dag, idx2names, filename):
@@ -21,7 +22,11 @@ def compute(infile, outfile):
     idx2names = {i: col for i, col in enumerate(columns)} #maps integer node IDs to variable names (i.e. 0 --> "age")
     names2idx = {v: k for k, v in idx2names.items()} #maps variable names to integer node IDs ("age" --> 0)
 
+    start_time = time.time()
+
     dag, best_score = hill_climb(df, max_iters=100, max_parents=3) #run structure learning algo and learn structure of DAG
+    end_time = time.time()
+    runtime = end_time - start_time
 
     plt.figure(figsize=(8, 6))
     pos = nx.spring_layout(dag, seed=0)
@@ -37,6 +42,7 @@ def compute(infile, outfile):
     write_gph(dag_indexed, idx2names, outfile) #convert node IDs back to names
 
     print(f"Structure algorithm finished running. Best score = {best_score:.2f}")
+    print(f"Runtime = {runtime:.2f} seconds")
     print(f"Graph written to {outfile}.")
     print(f"Edges: {list(dag.edges())}")
 
