@@ -36,7 +36,7 @@ def compute(infile, outfile):
     plt.axis('off')
     plt.tight_layout()
     plt.savefig(outfile.replace('.gph', '.png'), dpi=200)
-    plt.show()  #interactive window
+    # plt.show()  #interactive window
 
     dag_indexed = nx.relabel_nodes(dag, names2idx, copy=True) #convert names to node IDs
     write_gph(dag_indexed, idx2names, outfile) #convert node IDs back to names
