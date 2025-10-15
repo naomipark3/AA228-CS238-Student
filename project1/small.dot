@@ -1,0 +1,18 @@
+digraph G {
+  rankdir=LR;
+  graph [splines=ortho, nodesep=0.4, ranksep=0.6];
+  node  [shape=box, style=rounded, fontname="Helvetica"];
+  edge  [arrowsize=0.8];
+  "portembarked" -> "sex";
+  "fare" -> "passengerclass";
+  "numparentschildren" -> "age";
+  "numparentschildren" -> "sex";
+  "passengerclass" -> "survived";
+  "passengerclass" -> "age";
+  "passengerclass" -> "portembarked";
+  "passengerclass" -> "sex";
+  "sex" -> "survived";
+  "numsiblings" -> "numparentschildren";
+  "numsiblings" -> "passengerclass";
+  "numsiblings" -> "age";
+}
