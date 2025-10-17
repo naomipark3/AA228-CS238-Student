@@ -3,7 +3,7 @@ import networkx as nx
 from bn_scoring import load_discrete_data, bayesian_score_dirichlet_uniform
 
 def score_dag(df, dag):
-    """Convert DAG to {child: [parents]} and then compute the Bayesian score."""
+    """Convert DAG into a structure of child:[parents] (i.e. map each child to its list of parents) and then compute the Bayesian score."""
     parent_map = {n: [] for n in dag.nodes}
     for u, v in dag.edges:
         parent_map[v].append(u)
