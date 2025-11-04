@@ -149,7 +149,6 @@ def main():
     min_seen = int(Nsa[Nsa > 0].min()) if (Nsa > 0).any() else 0
     max_seen = int(Nsa.max())
     num_unseen = int((Nsa == 0).sum())
-    print("=== small.csv → small.policy ===")
     print(f"samples: {len(trips)}")
     print(f"states seen: {len(np.unique([s for s,_,_,_ in trips]))} / {S}")
     print(f"actions seen: {len(np.unique([a for _,a,_,_ in trips]))} / {A}")
