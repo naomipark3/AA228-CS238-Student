@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 from collections import Counter, defaultdict
 
-# ---------- helpers ----------
+#helper functions to find position and velocity from state index
 def decode_pos_vel(s):
     """Decode state index to (pos, vel). Both 0-indexed."""
     s0 = int(s) - 1
@@ -25,12 +25,12 @@ def infer_goal_states(df, reward_threshold=50000):
     high_reward = df[df["r"] >= reward_threshold]
     goal_next_states = set(high_reward["sp"].unique())
     
-    # Get goal position
+    #get goal position
     if len(goal_next_states) > 0:
         positions = [decode_pos_vel(s)[0] for s in goal_next_states]
         goal_pos = int(np.median(positions))
     else:
-        goal_pos = 469  # Fallback based on analysis
+        goal_pos = 469  #fallback based on analysis
     
     return goal_next_states, goal_pos
 
@@ -38,13 +38,13 @@ def build_terminal_mask(n_states, goal_states, goal_pos):
     """Mark states as terminal based on position."""
     term_flag = np.zeros(n_states + 1, dtype=bool)
     
-    # Mark known goal states
+    #mark known goal states
     for s in goal_states:
         if 1 <= s <= n_states:
             term_flag[s] = True
     
-    # Mark all states with position >= goal_pos - 3 as terminal
-    # (generous to account for discretization errors)
+    #mark all states with position >= goal_pos - 3 as terminal
+    #(generous to account for discretization errors)
     pos_threshold = max(goal_pos - 3, 465)
     for s in range(1, n_states + 1):
         pos, _ = decode_pos_vel(s)
@@ -62,12 +62,13 @@ def fitted_q_iteration(
     terminal_flag=None,
 ):
     """
-    Fitted Q-iteration with proper handling of terminal states.
+    Implement a fitted Q-iteration as described in Eq. 17.10 of Algorithms for Validation
+    with proper handling of terminal states.
     """
     if terminal_flag is None:
         terminal_flag = np.zeros(n_states + 1, dtype=bool)
 
-    # Pre-compute grouped data
+    #pre-compute grouped data
     grouped = df.groupby(["s", "a"])
     sa_data = {}
     for (s, a), grp in grouped:
@@ -75,32 +76,32 @@ def fitted_q_iteration(
         next_states = grp["sp"].values.astype(np.int64)
         sa_data[(s, a)] = (rewards, next_states)
 
-    # Initialize Q with reasonable estimates
+    #initialize Q with reasonable estimates
     Q = np.zeros((n_states + 1, n_actions + 1), dtype=np.float64)
     
-    # Run value iteration
+    #run value iteration
     for it in range(iters):
         Q_old = Q.copy()
         
         for (s, a), (rewards, next_states) in sa_data.items():
-            # Get max Q-value for each next state
+            #get max Q-value for each next state
             max_next_q = Q[next_states, 1:n_actions+1].max(axis=1)
             
-            # Zero out terminal states
+            #zero out terminal states
             max_next_q[terminal_flag[next_states]] = 0.0
             
-            # Bellman update
+            #bellman update
             targets = rewards + gamma * max_next_q
             Q[s, a] = targets.mean()
         
-        # Check convergence
+        #check convergence
         max_diff = np.abs(Q - Q_old).max()
         
         if (it + 1) % 20 == 0:
-            print(f"  Iteration {it+1}: max change = {max_diff:.2f}")
+            print(f"Iteration {it+1}: max change = {max_diff:.2f}")
         
         if max_diff < 1e-3 and it > 20:
-            print(f"  Converged at iteration {it+1}")
+            print(f"Converged at iteration {it+1}")
             break
     
     return Q
@@ -115,20 +116,20 @@ def get_smart_default_action(df, visited_states):
 
 def propagate_values_to_neighbors(Q, df, n_states, n_actions):
     """
-    For unvisited states, interpolate from nearby visited states.
-    This helps with generalization.
+    For unvisited states, we will interpolate from nearby visited states (hint given in project
+    handout). This should help with generalization.
     """
     visited = set(df["s"].unique())
     Q_prop = Q.copy()
     
-    # Simple propagation: for each unvisited state, find closest visited state
-    # and copy its policy (this is a simplified version)
+    #simple propagation: for each unvisited state, find closest visited state
+    #and copy its policy (this is a simplified version)
     for s in range(1, n_states + 1):
         if s not in visited:
-            # Get position and velocity
+            #get position and velocity
             pos, vel = decode_pos_vel(s)
             
-            # Find nearby states that were visited
+            #find nearby states that were visited
             nearby_states = []
             for dp in range(-2, 3):
                 for dv in range(-2, 3):
@@ -187,17 +188,13 @@ def dump_policy(Q, df, out_path, n_states=50000, n_actions=7, use_propagation=Fa
 # ---------- main ----------
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
-    ap.add_argument("--csv", default="medium.csv")
+    ap.add_argument("--in", dest="csv", default="data/medium.csv")
     ap.add_argument("--out", default="medium.policy")
     ap.add_argument("--iters", type=int, default=100)
     ap.add_argument("--propagate", action="store_true", help="Propagate Q-values to unvisited states")
     args = ap.parse_args()
-
-    print("="*70)
-    print("MEDIUM PROBLEM - OPTIMIZED Q-LEARNING")
-    print("="*70)
     
-    # Load data
+    #load data
     df = load_medium_csv(args.csv)
     print(f"Loaded {len(df):,} transitions")
     print(f"Unique states: {df['s'].nunique()}")
@@ -206,17 +203,17 @@ if __name__ == "__main__":
     n_actions = 7
     n_states = 50000
 
-    # Identify goal states
+    #identify goal states
     goal_states, goal_pos = infer_goal_states(df)
-    print(f"\nGoal states: {len(goal_states)}")
+    print(f"Goal states: {len(goal_states)}")
     print(f"Goal position index: {goal_pos}")
     
-    # Build terminal mask
+    #build terminal mask as follows
     term_flag = build_terminal_mask(n_states, goal_states, goal_pos)
     print(f"Total terminal states: {term_flag.sum()}")
 
-    # Run Q-learning
-    print(f"\nRunning Q-iteration ({args.iters} max iterations)...")
+    #run Q-learning
+    print(f"Running Q-iteration ({args.iters} max iterations)...")
     Q = fitted_q_iteration(
         df=df,
         n_states=n_states,
@@ -226,15 +223,14 @@ if __name__ == "__main__":
         terminal_flag=term_flag,
     )
     
-    # Statistics
+    #print stats as follows:
     visited = set(df["s"].unique())
     visited_q_vals = [Q[s, 1:n_actions+1].max() for s in visited]
-    print(f"\nQ-value stats (visited states):")
-    print(f"  Mean: {np.mean(visited_q_vals):.2f}")
-    print(f"  Max: {np.max(visited_q_vals):.2f}")
+    print(f"Q-value stats (visited states):")
+    print(f"Mean: {np.mean(visited_q_vals):.2f}")
+    print(f"Max: {np.max(visited_q_vals):.2f}")
     
-    # Extract policy
-    print("\nExtracting policy...")
+    #extract policy
     out_path = dump_policy(Q, df, args.out, n_states, n_actions, use_propagation=args.propagate)
     
-    print(f"\n✓ Wrote policy to: {out_path}")
+    print(f"Wrote policy to: {out_path}")
