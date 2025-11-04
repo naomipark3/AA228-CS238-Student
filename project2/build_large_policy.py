@@ -1,9 +1,9 @@
 import argparse
 import numpy as np
 import pandas as pd
-from collections import defaultdict
+from collections import Counter, defaultdict
 
-# ---------- State encoding/decoding ----------
+#Stage encoding and decoding based on csv structure:
 def decode_state(s):
     """Decode state XXYYZZ -> (x, y, z) where x∈[1,30], y∈[1,20], z∈[1,20]"""
     s_str = f"{s:06d}"
@@ -21,7 +21,7 @@ def is_valid_state(s):
     x, y, z = decode_state(s)
     return 1 <= x <= 30 and 1 <= y <= 20 and 1 <= z <= 20
 
-# ---------- Data loading ----------
+#Load data using pandas:
 def load_large_csv(path):
     """Load CSV data."""
     df = pd.read_csv(path)
@@ -31,13 +31,13 @@ def load_large_csv(path):
     df = df.astype({"s": int, "a": int, "r": float, "sp": int})
     return df
 
-# ---------- Model building ----------
+#Build Maximum Likelihood Model-Based RL (16.1, 16.2 from Algorithms for Validation)
 def build_ml_model(df, n_actions=9):
     """
     Build maximum likelihood model from data.
     Returns: transition_counts, reward_sums, state_action_counts, visited_states
     """
-    # Use dictionaries for sparse storage
+    #dictionaries for *sparse storage*
     transition_counts = defaultdict(lambda: defaultdict(lambda: defaultdict(int)))  # N[s][a][sp]
     reward_sums = defaultdict(lambda: defaultdict(float))      # ρ[s][a]
     state_action_counts = defaultdict(lambda: defaultdict(int)) # N[s][a]
@@ -52,8 +52,8 @@ def build_ml_model(df, n_actions=9):
     
     visited_states = set(df['s'].unique())
     
-    print(f"  Observed {len(visited_states)} unique states")
-    print(f"  Observed {len(df)} transitions")
+    print(f"Observed {len(visited_states)} unique states")
+    print(f"Observed {len(df)} transitions")
     
     return transition_counts, reward_sums, state_action_counts, visited_states
 
@@ -74,7 +74,7 @@ def get_reward(s, a, reward_sums, state_action_counts):
         return reward_sums[s][a] / n_sa
     return 0.0
 
-# ---------- Value iteration ----------
+#Value iteration
 def value_iteration(
     all_states,
     n_actions,
@@ -89,57 +89,57 @@ def value_iteration(
     """
     Run value iteration on the learned model.
     """
-    print(f"\nRunning value iteration (max {max_iters} iterations)...")
+    print(f"Running value iteration (max {max_iters} iterations)...")
     
-    # Initialize value function
-    V = defaultdict(float)  # Default value is 0
+    #initialize value function
+    V = defaultdict(float)  #**default value is 0
     
-    # For unvisited states, we'll compute values on-demand
-    # Focus iterations on visited states and their neighbors
+    #for unvisited states, we will compute values ON-DEMAND
+    #Then, focus iterations on visited states and their neighbors
     
     for iteration in range(max_iters):
         V_old = V.copy()
         max_delta = 0
         
-        # Update all visited states
+        #update all visited states
         for s in visited_states:
             if not is_valid_state(s):
                 continue
                 
-            # Compute Q-values for all actions
+            #compute Q-values for all actions
             q_values = []
             for a in range(1, n_actions + 1):
-                # Get expected reward
+                #get expected reward
                 r = get_reward(s, a, reward_sums, state_action_counts)
                 
-                # Get transition probabilities
+                #get transition probabilities
                 trans_probs = get_transition_probs(s, a, transition_counts, state_action_counts)
                 
                 if trans_probs is not None:
-                    # Use learned transition model
+                    #use learned transition model
                     expected_future = sum(prob * V_old[sp] for sp, prob in trans_probs.items())
                 else:
-                    # No data for this action - assume it stays in place
+                    #no data for this action, so we assume it stays in place
                     expected_future = V_old[s]
                 
                 q_value = r + gamma * expected_future
                 q_values.append(q_value)
             
-            # Update value function
+            #update value function
             V[s] = max(q_values)
             max_delta = max(max_delta, abs(V[s] - V_old[s]))
         
         if (iteration + 1) % 10 == 0:
-            print(f"  Iteration {iteration + 1}: max delta = {max_delta:.6f}")
+            print(f"Iteration {iteration + 1}: max delta = {max_delta:.6f}")
         
         # Check convergence
         if max_delta < theta:
-            print(f"  Converged at iteration {iteration + 1}")
+            print(f"Converged at iteration {iteration + 1}")
             break
     
     return V
 
-# ---------- Policy extraction ----------
+#Policy extraction
 def extract_policy(
     all_states,
     n_actions,
@@ -151,18 +151,18 @@ def extract_policy(
     gamma=0.95
 ):
     """
-    Extract greedy policy from value function.
-    For unvisited states, use heuristics based on the grid structure.
+    At this point, we will extract greedy policy from value function.
+    For unvisited states, we will use heuristics based on the grid structure
+    we detected in the large.csv.
     """
-    print("\nExtracting policy...")
+    print("Extracting policy")
     
     policy = {}
     
-    # Default action based on observed data
-    # Actions 5-9 mostly do nothing, so default to action that moves
-    # Actions 1,2,3,4 are the primary movement actions
+    #default action based on observed data: Actions 5-9 mostly do nothing, so default to action that moves.
+    #Actions 1,2,3,4 are the primary movement actions
     
-    # Analyze which actions are most rewarding
+    #analyze which actions are most rewarding as follows:
     action_rewards = defaultdict(list)
     for s in visited_states:
         for a in range(1, n_actions + 1):
@@ -170,7 +170,7 @@ def extract_policy(
                 r = get_reward(s, a, reward_sums, state_action_counts)
                 action_rewards[a].append(r)
     
-    # Compute average reward per action
+    #compute average reward per action
     avg_action_rewards = {}
     for a in range(1, n_actions + 1):
         if action_rewards[a]:
@@ -178,18 +178,18 @@ def extract_policy(
         else:
             avg_action_rewards[a] = 0.0
     
-    print(f"  Average rewards by action: {avg_action_rewards}")
+    print(f"average rewards by action: {avg_action_rewards}")
     
-    # Default action for completely unvisited states
+    #default action for completely unvisited states
     default_action = max(avg_action_rewards, key=avg_action_rewards.get)
     
-    # First pass: compute policy for all visited states
+    #in first pass, we compute policy for all visited states
     visited_policy = {}
     for s in visited_states:
         if not is_valid_state(s):
             continue
         
-        # Compute greedy action based on learned model
+        #compute greedy action based on learned model
         q_values = []
         for a in range(1, n_actions + 1):
             r = get_reward(s, a, reward_sums, state_action_counts)
@@ -198,7 +198,7 @@ def extract_policy(
             if trans_probs is not None:
                 expected_future = sum(prob * V[sp] for sp, prob in trans_probs.items())
             else:
-                expected_future = V[s]  # Assume stays in place
+                expected_future = V[s]  #assume stays in place
             
             q_value = r + gamma * expected_future
             q_values.append(q_value)
@@ -206,28 +206,28 @@ def extract_policy(
         best_action = np.argmax(q_values) + 1
         visited_policy[s] = best_action
     
-    # Second pass: assign policy for all states
+    #In second pass, we assign policy for all states
     unvisited_count = 0
     
     for s in all_states:
         if not is_valid_state(s):
-            # Invalid state - use default
+            #invalid state, so use default
             policy[s] = default_action
             continue
         
         if s in visited_policy:
-            # Visited state - use computed policy
+            #visited state --> use computed policy
             policy[s] = visited_policy[s]
         else:
-            # Unvisited state - use nearest neighbor heuristic
+            #unvisited state --> use nearest neighbor heuristic
             unvisited_count += 1
             
-            # Try to find a nearby visited state
+            #we will try to find a nearby visited state:
             x, y, z = decode_state(s)
             best_neighbor = None
             best_value = float('-inf')
             
-            # Check immediate neighbors
+            #check immediate neighbors:
             for dx in [-1, 0, 1]:
                 for dy in [-1, 0, 1]:
                     for dz in [-1, 0, 1]:
@@ -241,23 +241,21 @@ def extract_policy(
                                 best_value = V[neighbor]
             
             if best_neighbor is not None:
-                # Copy policy from best neighbor
+                #copy policy from best neighbor as follows:
                 policy[s] = visited_policy[best_neighbor]
             else:
-                # No nearby visited state - use default
+                #no nearby visited state --> use default
                 policy[s] = default_action
     
-    print(f"  Unvisited states: {unvisited_count:,} / {len(all_states):,}")
-    print(f"  Default action: {default_action}")
+    print(f"Unvisited states: {unvisited_count:,} / {len(all_states):,}")
+    print(f"Default action: {default_action}")
     
-    # Show policy distribution
-    from collections import Counter
+    #need to show policy distributions:
     policy_dist = Counter(policy.values())
     print(f"  Policy distribution: {dict(sorted(policy_dist.items()))}")
     
     return policy
 
-# ---------- Main ----------
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--in", dest="input_file", default="data/large.csv")
@@ -270,17 +268,17 @@ def main():
     print("LARGE PROBLEM - MODEL-BASED RL")
     print("="*70)
     
-    # Load data
+    #load data using pandas:
     df = load_large_csv(args.input_file)
     print(f"Loaded {len(df):,} transitions")
     
     n_actions = 9
     n_states = 302020
     
-    # Build maximum likelihood model
+    #build maximum likelihood model by calling our model function
     transition_counts, reward_sums, state_action_counts, visited_states = build_ml_model(df, n_actions)
     
-    # Generate all valid states
+    #generate all valid states
     print("\nGenerating all valid states...")
     all_states = []
     for x in range(1, 31):
@@ -289,13 +287,13 @@ def main():
                 s = encode_state(x, y, z)
                 all_states.append(s)
     
-    # Pad to exactly 302020 states
+    #pad to EXACTLY 302020 states
     while len(all_states) < n_states:
         all_states.append(len(all_states) + 1)
     
     print(f"Total states to generate policy for: {len(all_states):,}")
     
-    # Run value iteration
+    #run value iteration
     V = value_iteration(
         all_states,
         n_actions,
@@ -307,7 +305,7 @@ def main():
         max_iters=args.iters
     )
     
-    # Extract policy
+    #extract policy as follows:
     policy = extract_policy(
         all_states,
         n_actions,
@@ -319,13 +317,13 @@ def main():
         gamma=args.gamma
     )
     
-    # Write policy file
-    print(f"\nWriting policy to {args.out}...")
+    #write policy file to specified destination:
+    print(f"Writing policy to {args.out}:")
     with open(args.out, "w") as f:
         for s in range(1, n_states + 1):
             f.write(f"{policy.get(s, 1)}\n")
     
-    print(f"\n✓ Wrote policy to: {args.out}")
+    print(f"Wrote policy to: {args.out}")
 
 if __name__ == "__main__":
     main()
