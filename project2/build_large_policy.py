@@ -1,5 +1,5 @@
 """
-Build a model of large.csv, solve it by value iteration, and write large.policy.
+Build a model of large.csv, solve it with value iteration, and write large.policy.
 
 How to run: python .\build_large_policy.py --in data/large.csv --out <policy file name>.policy
 """
@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from collections import Counter, defaultdict
 from problem_configs import LARGE
+from datetime import datetime
 
 cfg = LARGE
 n_states = cfg["S"]
@@ -273,6 +274,8 @@ def main():
     parser.add_argument("--iters", type=int, default=100)
     parser.add_argument("--gamma", type=float, default=gamma_default)
     args = parser.parse_args()
+
+    start_time = datetime.now()
     
     #load data using pandas:
     df = load_large_csv(args.input_file)
@@ -324,6 +327,10 @@ def main():
             f.write(f"{policy.get(s, 1)}\n")
     
     print(f"Wrote policy to: {args.out}")
+
+    end_time = datetime.now()  # <-- stop timing here
+    print(f"Total runtime: {end_time - start_time} "
+          f"({(end_time - start_time).total_seconds():.3f} s)")
 
 if __name__ == "__main__":
     main()

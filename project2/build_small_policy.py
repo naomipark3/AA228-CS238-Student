@@ -1,5 +1,5 @@
 """
-Build a model of small.csv, solve it by value iteration, and write small.policy.
+Build a model of small.csv, solve it with value iteration, and write small.policy.
 
 How to run: python .\build_small_policy.py --in data/small.csv --out <policy file name>.policy
 """
@@ -11,6 +11,7 @@ from typing import List, Tuple
 import numpy as np
 from problem_configs import SMALL
 from constants import ALPHA, EPS, MAX_ITERS
+from datetime import datetime
 
 
 #problem constants (from the project description)
@@ -139,6 +140,8 @@ def main():
                         help="Output policy file path (default: small.policy)")
     args = parser.parse_args()
 
+    start_time = datetime.now()
+
     trips = load_transitions(args.in_path)
     P, R_sa, Nsa = estimate_model(trips, alpha=ALPHA)
     V, pi, iters = value_iteration(P, R_sa, gamma=GAMMA, eps=EPS, max_iters=MAX_ITERS)
@@ -155,6 +158,10 @@ def main():
     print(f"(s,a) coverage: {seen_sa_frac:.3f} (unseen pairs: {num_unseen})")
     print(f"min/ max counts over seen (s,a): {min_seen} / {max_seen}")
     print(f"wrote policy to: {args.out_path}")
+
+    end_time = datetime.now()  # <-- stop timing here
+    print(f"Total runtime: {end_time - start_time} "
+          f"({(end_time - start_time).total_seconds():.3f} s)")
 
 
 if __name__ == "__main__":

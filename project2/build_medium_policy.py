@@ -9,6 +9,7 @@ import numpy as np
 import pandas as pd
 from collections import Counter, defaultdict
 from problem_configs import MEDIUM
+from datetime import datetime
 
 # Problem configuration
 cfg = MEDIUM
@@ -206,6 +207,7 @@ if __name__ == "__main__":
     ap.add_argument("--propagate", action="store_true", help="Propagate Q-values to unvisited states")
     args = ap.parse_args()
     
+    start_time = datetime.now()
     #load data
     df = load_medium_csv(args.csv)
     print(f"Loaded {len(df):,} transitions")
@@ -241,3 +243,7 @@ if __name__ == "__main__":
     out_path = dump_policy(Q, df, args.out, n_states, n_actions, use_propagation=args.propagate)
     
     print(f"Wrote policy to: {out_path}")
+
+    end_time = datetime.now()  # <-- stop timing here
+    print(f"Total runtime: {end_time - start_time} "
+          f"({(end_time - start_time).total_seconds():.3f} s)")
