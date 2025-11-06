@@ -1,3 +1,9 @@
+"""
+Build a model of large.csv, solve it by value iteration, and write large.policy.
+
+How to run: python .\build_large_policy.py --in data/large.csv --out <policy file name>.policy
+"""
+
 import argparse
 import numpy as np
 import pandas as pd

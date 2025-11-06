@@ -1,3 +1,9 @@
+"""
+Build a model of medium.csv, solve it with fitted Q-iteration, and write medium.policy.
+
+How to run: python .\build_medium_policy.py --in data/medium.csv --out <policy file name>.policy
+"""
+
 import argparse
 import numpy as np
 import pandas as pd
