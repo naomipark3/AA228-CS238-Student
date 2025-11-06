@@ -2,6 +2,13 @@ import argparse
 import numpy as np
 import pandas as pd
 from collections import Counter, defaultdict
+from problem_configs import MEDIUM
+
+# Problem configuration
+cfg = MEDIUM
+n_states = cfg["S"]
+n_actions = cfg["A"]
+gamma_default = cfg["GAMMA"]
 
 #helper functions to find position and velocity from state index
 def decode_pos_vel(s):
@@ -55,9 +62,9 @@ def build_terminal_mask(n_states, goal_states, goal_pos):
 
 def fitted_q_iteration(
     df,
-    n_states=50000,
-    n_actions=7,
-    gamma=1.0,
+    n_states=n_states,
+    n_actions=n_actions,
+    gamma=gamma_default,
     iters=100,
     terminal_flag=None,
 ):
@@ -147,13 +154,13 @@ def propagate_values_to_neighbors(Q, df, n_states, n_actions):
     
     return Q_prop
 
-def dump_policy(Q, df, out_path, n_states=50000, n_actions=7, use_propagation=False):
+def dump_policy(Q, df, out_path, n_states=n_states, n_actions=n_actions, use_propagation=False):
     """Extract greedy policy from Q-values."""
     visited = set(df["s"].unique())
     
     # Optionally propagate values
     if use_propagation:
-        print("Propagating Q-values to unvisited states...")
+        print("propagating Q-values to unvisited states")
         Q = propagate_values_to_neighbors(Q, df, n_states, n_actions)
     
     default_action = get_smart_default_action(df, visited)
@@ -185,7 +192,6 @@ def dump_policy(Q, df, out_path, n_states=50000, n_actions=7, use_propagation=Fa
     
     return out_path
 
-# ---------- main ----------
 if __name__ == "__main__":
     ap = argparse.ArgumentParser()
     ap.add_argument("--in", dest="csv", default="data/medium.csv")
@@ -199,26 +205,21 @@ if __name__ == "__main__":
     print(f"Loaded {len(df):,} transitions")
     print(f"Unique states: {df['s'].nunique()}")
     print(f"Unique (s,a) pairs: {df.groupby(['s', 'a']).ngroups}")
-    
-    n_actions = 7
-    n_states = 50000
 
     #identify goal states
     goal_states, goal_pos = infer_goal_states(df)
-    print(f"Goal states: {len(goal_states)}")
-    print(f"Goal position index: {goal_pos}")
     
     #build terminal mask as follows
     term_flag = build_terminal_mask(n_states, goal_states, goal_pos)
     print(f"Total terminal states: {term_flag.sum()}")
 
     #run Q-learning
-    print(f"Running Q-iteration ({args.iters} max iterations)...")
+    print(f"Running Q-iteration ({args.iters} max iterations):")
     Q = fitted_q_iteration(
         df=df,
         n_states=n_states,
         n_actions=n_actions,
-        gamma=1.0,
+        gamma=gamma_default,
         iters=args.iters,
         terminal_flag=term_flag,
     )

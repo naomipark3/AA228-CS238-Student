@@ -9,7 +9,7 @@ SMALL = dict(
 MEDIUM = dict(
     S=50_000,
     A=7,
-    GAMMA=1.0,  # undiscounted episodic task
+    GAMMA=1.0,  #undiscounted episodic task
     episodic=True
 )
 

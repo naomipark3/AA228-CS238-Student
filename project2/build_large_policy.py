@@ -2,6 +2,12 @@ import argparse
 import numpy as np
 import pandas as pd
 from collections import Counter, defaultdict
+from problem_configs import LARGE
+
+cfg = LARGE
+n_states = cfg["S"]
+n_actions = cfg["A"]
+gamma_default = cfg["GAMMA"]
 
 #Stage encoding and decoding based on csv structure:
 def decode_state(s):
@@ -31,8 +37,8 @@ def load_large_csv(path):
     df = df.astype({"s": int, "a": int, "r": float, "sp": int})
     return df
 
-#Build Maximum Likelihood Model-Based RL (16.1, 16.2 from Algorithms for Validation)
-def build_ml_model(df, n_actions=9):
+#Build Maximum Likelihood Model-Based RL (see 16.1, 16.2 from Algorithms for Validation)
+def build_ml_model(df, n_actions=n_actions):
     """
     Build maximum likelihood model from data.
     Returns: transition_counts, reward_sums, state_action_counts, visited_states
@@ -74,7 +80,7 @@ def get_reward(s, a, reward_sums, state_action_counts):
         return reward_sums[s][a] / n_sa
     return 0.0
 
-#Value iteration
+#value iteration function
 def value_iteration(
     all_states,
     n_actions,
@@ -82,7 +88,7 @@ def value_iteration(
     reward_sums,
     state_action_counts,
     visited_states,
-    gamma=0.95,
+    gamma=gamma_default,
     max_iters=100,
     theta=1e-4
 ):
@@ -148,15 +154,13 @@ def extract_policy(
     reward_sums,
     state_action_counts,
     visited_states,
-    gamma=0.95
+    gamma=gamma_default
 ):
     """
     At this point, we will extract greedy policy from value function.
     For unvisited states, we will use heuristics based on the grid structure
     we detected in the large.csv.
     """
-    print("Extracting policy")
-    
     policy = {}
     
     #default action based on observed data: Actions 5-9 mostly do nothing, so default to action that moves.
@@ -252,7 +256,7 @@ def extract_policy(
     
     #need to show policy distributions:
     policy_dist = Counter(policy.values())
-    print(f"  Policy distribution: {dict(sorted(policy_dist.items()))}")
+    print(f"Policy distribution: {dict(sorted(policy_dist.items()))}")
     
     return policy
 
@@ -261,25 +265,16 @@ def main():
     parser.add_argument("--in", dest="input_file", default="data/large.csv")
     parser.add_argument("--out", default="large.policy")
     parser.add_argument("--iters", type=int, default=100)
-    parser.add_argument("--gamma", type=float, default=0.95)
+    parser.add_argument("--gamma", type=float, default=gamma_default)
     args = parser.parse_args()
-    
-    print("="*70)
-    print("LARGE PROBLEM - MODEL-BASED RL")
-    print("="*70)
     
     #load data using pandas:
     df = load_large_csv(args.input_file)
-    print(f"Loaded {len(df):,} transitions")
-    
-    n_actions = 9
-    n_states = 302020
     
     #build maximum likelihood model by calling our model function
     transition_counts, reward_sums, state_action_counts, visited_states = build_ml_model(df, n_actions)
     
     #generate all valid states
-    print("\nGenerating all valid states...")
     all_states = []
     for x in range(1, 31):
         for y in range(1, 21):
@@ -318,7 +313,6 @@ def main():
     )
     
     #write policy file to specified destination:
-    print(f"Writing policy to {args.out}:")
     with open(args.out, "w") as f:
         for s in range(1, n_states + 1):
             f.write(f"{policy.get(s, 1)}\n")

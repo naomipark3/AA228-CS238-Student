@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Build a model of small.csv, solve it by value iteration, and write small.policy.
 
@@ -86,7 +85,7 @@ def estimate_model(trips: List[Tuple[int, int, float, int]],
                 P[s, a, :] = N[s, a, :] / denom
                 P[s, a, s] += alpha / denom
 
-    # Expected reward for (s,a) = sum_{s'} P(s'|s,a) * R(s,a,s')
+    #expected reward for (s,a) = sum_{s'} P(s'|s,a) * R(s,a,s')
     R_sa = (P * R_sasp).sum(axis=2)
     return P, R_sa, Nsa
 
